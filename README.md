@@ -190,6 +190,27 @@ Estimated Time : 4.88 minutes
 
 ---
 
+## 🔒 Reservation-Lock Coordination Layer & Simulation
+
+To address the hospital over-commitment issue where multiple ambulances concurrently target the same hospital based on stale bed counts, we introduced a **Reservation-Lock Coordination Layer**.
+
+### Features:
+- **Lock Manager (`coordination/lock_manager.py`)**: Tracks in-memory bed resource pools and manages atomic `ReservationLock` claims (status: `HELD`, `RELEASED`, `CONVERTED`, `EXPIRED`) with a time-to-live (TTL = expected arrival + buffer).
+- **Lock-Aware Dispatch Flow (`models/hospital_score.py`)**: Attempts to claim a lock on the top-scored hospital. If full, it falls back down the sorted candidate leaderboard until it secures a lock.
+- **Multi-Ambulance Simulator (`simulation/multi_ambulance_sim.py`)**: Runs N ambulances on the road graph with random arrival times, severities, travel times, and dynamic route re-evaluations (swapping locks if a better hospital opens up).
+- **Offline Cache Optimization**: Transparently monkeypatches OSMnx graph-loading in the simulation to run hundreds of times faster.
+
+### Run the Simulation Comparison:
+Run the comparison script to simulate both `BASELINE` (no reservation locks) and `LOCKED` modes on the same sequence of calls:
+
+```bash
+python -m results.compare_conditions --ambulances 15 --bed-scale 0.05 --seed 42
+```
+
+This prints a metrics comparison table (over-commitment count, average waiting times, time-to-admission, lock swaps) and saves a comparative plot at `results/condition_comparison.png`.
+
+---
+
 ## 🚀 Future Improvements
 
 - Live GPS Location
