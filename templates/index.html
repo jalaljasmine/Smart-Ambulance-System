@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Emergency Ambulance Routing System — Vijayawada</title>
+  <meta name="description" content="Professional AI-powered Emergency Ambulance Routing & Traffic Optimization System for Vijayawada, Andhra Pradesh." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  
+  <!-- Leaflet CSS for Interactive Location Picker Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root[data-theme="dark"] {
+      --bg:        #080c16;
+      --surface:   #0f172a;
+      --card:      rgba(30, 41, 59, 0.7);
+      --border:    rgba(255, 255, 255, 0.1);
+      --accent:    #3b82f6;
+      --accent2:   #6366f1;
+      --red:       #ef4444;
+      --green:     #10b981;
+      --yellow:    #f59e0b;
+      --text:      #f8fafc;
+      --muted:     #94a3b8;
+      --input-bg:  #1e293b;
+      --select-opt:#0f172a;
+      --radius:    12px;
+    }
+
+    :root[data-theme="light"] {
+      --bg:        #f8fafc;
+      --surface:   #ffffff;
+      --card:      #ffffff;
+      --border:    #e2e8f0;
+      --accent:    #2563eb;
+      --accent2:   #4f46e5;
+      --red:       #dc2626;
+      --green:     #059669;
+      --yellow:    #d97706;
+      --text:      #0f172a;
+      --muted:     #64748b;
+      --input-bg:  #f1f5f9;
+      --select-opt:#ffffff;
+      --radius:    12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* ── Professional Header ─────────────────────────────────────────── */
+    header {
+      background: rgba(15, 23, 42, 0.9);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(16px);
+    }
+
+    .brand-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, #ef4444, #3b82f6);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .city-badge {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      color: var(--accent);
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .city-badge::before {
+      content: '';
+      width: 7px; height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    .theme-toggle-btn {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .theme-toggle-btn:hover { border-color: var(--accent); }
+
+    /* ── Main layout ─────────────────────────────────────────────── */
+    main {
+      max-width: 1040px;
+      margin: 28px auto;
+      padding: 0 24px 60px;
+    }
+
+    /* Professional Hero Banner */
+    .hero-banner {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 32px;
+      border: 1px solid var(--border);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+      min-height: 240px;
+      display: flex;
+      align-items: center;
+    }
+    .hero-banner-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: brightness(0.45) contrast(1.1);
+      z-index: 1;
+    }
+    .hero-banner-overlay {
+      position: relative;
+      z-index: 2;
+      padding: 36px 40px;
+      max-width: 680px;
+    }
+    .hero-tag {
+      display: inline-block;
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+    .hero-banner h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1.2;
+      color: #ffffff;
+      margin-bottom: 10px;
+    }
+    .hero-banner p {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    /* Pipeline Process Steps Bar */
+    .process-bar {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+    @media (max-width: 768px) { .process-bar { grid-template-columns: repeat(3, 1fr); } }
+    
+    .process-step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+    .step-num {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .step-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* ── Form Card ───────────────────────────────────────────────── */
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+    .card-header-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 680px) { .form-grid { grid-template-columns: 1fr; } }
+
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    select, input[type="number"], input[type="text"] {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 0.92rem;
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+
+    select option {
+      background-color: var(--select-opt) !important;
+      color: var(--text) !important;
+      padding: 10px;
+    }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+    }
+
+    .section-divider {
+      grid-column: 1 / -1;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Mini Picker Map */
+    #pickerMap {
+      width: 100%;
+      height: 230px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-top: 6px;
+      z-index: 1;
+    }
+    .map-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* GPS Button */
+    .btn-gps {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: var(--accent);
+      padding: 11px 18px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .btn-gps:hover {
+      background: rgba(59, 130, 246, 0.25);
+    }
+
+    /* Submit button */
+    .btn-submit {
+      grid-column: 1 / -1;
+      margin-top: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      padding: 16px 32px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+    }
+
+    /* Error banner */
+    .error-banner {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--red);
+      padding: 14px 20px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+    }
+
+    /* Loading overlay */
+    #loading {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(8, 12, 22, 0.9);
+      z-index: 999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    #loading.show { display: flex; }
+    .spinner {
+      width: 50px; height: 50px;
+      border: 4px solid rgba(59, 130, 246, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p {
+      color: #f8fafc;
+      font-size: 0.98rem;
+      font-weight: 600;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 48px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading overlay -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Running Emergency Dispatch Pipeline… Calculating Optimum Route</p>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand-container">
+      <div class="brand-icon">ER</div>
+      <div class="brand-title">Smart Ambulance System</div>
+    </div>
+    <div class="header-actions">
+      <div class="city-badge">Vijayawada Road Network</div>
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" id="themeBtn">
+        ☀️ Light Mode
+      </button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <!-- Realistic Hero Banner -->
+    <div class="hero-banner">
+      <img src="/static/images/ambulance_hero.png" alt="Emergency Ambulance" class="hero-banner-img" />
+      <div class="hero-banner-overlay">
+        <span class="hero-tag">Emergency Dispatch & Traffic Optimization</span>
+        <h2>AI-Driven Emergency Response System</h2>
+        <p>Real-time accident severity classification, hospital triage matching, and Dijkstra traffic-aware shortest path routing for Vijayawada city.</p>
+      </div>
+    </div>
+
+    <!-- Process Step Bar -->
+    <div class="process-bar">
+      <div class="process-step">
+        <div class="step-num">Step 1</div>
+        <div class="step-name">Incident Input</div>
+      </div>
+      <div class="process-step">
+        <div class="step-num">Step 2</div>
+        <div class="step-name">Severity ML</div>
+      </div>
+      <div class="process-step">
+        <div class="step-num">Step 3</div>
+        <div class="step-name">Hospital Triage</div>
+      </div>
+      <div class="process-step">
+        <div class="step-num">Step 4</div>
+        <div class="step-name">Traffic ML</div>
+      </div>
+      <div class="process-step">
+        <div class="step-num">Step 5</div>
+        <div class="step-name">Dijkstra Route</div>
+      </div>
+      <div class="process-step">
+        <div class="step-num">Step 6</div>
+        <div class="step-name">Live Telemetry</div>
+      </div>
+    </div>
+
+    <!-- Error banner -->
+    {% if error %}
+    <div class="error-banner">⚠️ {{ error }}</div>
+    {% endif %}
+
+    <!-- Input form -->
+    <div class="form-card">
+      <div class="card-header-title">
+        <span>Incident Assessment & Dispatch Form</span>
+      </div>
+
+      <form id="mainForm" method="POST" action="/predict" onsubmit="showLoading()">
+        <div class="form-grid">
+
+          <!-- Section: Environmental Context -->
+          <div class="section-divider">1. Accident & Environmental Context</div>
+
+          <div class="form-group">
+            <label>Day of Week</label>
+            <select name="day_of_week" id="day_of_week">
+              {% for d in options['Day_of_week'] %}
+              <option value="{{ d }}" {% if d == 'Friday' %}selected{% endif %}>{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Weather Conditions</label>
+            <select name="weather" id="weather">
+              {% for w in options['Weather_conditions'] %}
+              <option value="{{ w }}" {% if w == 'Normal' %}selected{% endif %}>{{ w }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Light Conditions</label>
+            <select name="light" id="light">
+              {% for l in options['Light_conditions'] %}
+              <option value="{{ l }}" {% if l == 'Daylight' %}selected{% endif %}>{{ l }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Road Surface Conditions</label>
+            <select name="road_surface" id="road_surface">
+              {% for s in options['Road_surface_conditions'] %}
+              <option value="{{ s }}" {% if s == 'Dry' %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Type of Collision</label>
+            <select name="collision_type" id="collision_type">
+              {% for c in options['Type_of_collision'] %}
+              <option value="{{ c }}" {% if c == 'Vehicle with vehicle collision' %}selected{% endif %}>{{ c }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Primary Cause of Accident</label>
+            <select name="cause" id="cause">
+              {% for c in options['Cause_of_accident'] %}
+              <option value="{{ c }}" {% if c == 'Overtaking' %}selected{% endif %}>{{ c }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Number of Vehicles Involved</label>
+            <select name="vehicles" id="vehicles">
+              {% for n in options['Number_of_vehicles_involved'] %}
+              <option value="{{ n }}" {% if n == 2 %}selected{% endif %}>{{ n }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Number of Casualties</label>
+            <select name="casualties" id="casualties">
+              {% for n in options['Number_of_casualties'] %}
+              <option value="{{ n }}" {% if n == 2 %}selected{% endif %}>{{ n }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Section: Hospital Selection Strategy -->
+          <div class="section-divider">2. Hospital Selection Strategy</div>
+
+          <div class="form-group">
+            <label>Hospital Triage Strategy</label>
+            <select name="routing_strategy" id="routing_strategy" onchange="toggleHospitalDropdown(this)">
+              <option value="capacity" selected>Capacity & ICU Weighted (Recommended)</option>
+              <option value="proximity">Proximity & Distance Weighted (Nearest Hospital)</option>
+              <option value="manual">Manual Hospital Choice (Select Below)</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="manualHospGroup" style="display: none;">
+            <label>Selected Destination Hospital</label>
+            <select name="selected_hospital" id="selected_hospital">
+              {% for h in options['Hospitals'] %}
+              <option value="{{ h }}">{{ h }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Section: Location & Traffic Junction -->
+          <div class="section-divider">3. Incident Location & Junction</div>
+
+          <div class="form-group full">
+            <label>Vijayawada City Area / Landmark</label>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <select id="landmarkSelect" onchange="updateCoordinatesFromLandmark(this)" style="flex: 1; min-width: 240px;">
+                <option value="">-- Select a Vijayawada City Landmark --</option>
+                {% for lm in options['Landmarks'] %}
+                <option value="{{ lm.lat }},{{ lm.lon }}" {% if 'Benz' in lm.name %}selected{% endif %}>
+                  {{ lm.name }}
+                </option>
+                {% endfor %}
+              </select>
+              <button type="button" class="btn-gps" onclick="smartGPSLocation()">
+                Detect Device GPS Location
+              </button>
+            </div>
+          </div>
+
+          <!-- Interactive Leaflet Map Click Picker -->
+          <div class="form-group full">
+            <label>Interactive Map Pin Location</label>
+            <div id="pickerMap"></div>
+            <div class="map-hint">Drag pin or click anywhere on the Vijayawada map to specify exact accident coordinates.</div>
+          </div>
+
+          <div class="form-group">
+            <label>Incident Latitude</label>
+            <input type="number" name="accident_lat" id="accident_lat"
+                   value="16.5022" step="0.0001" min="15" max="18" />
+          </div>
+
+          <div class="form-group">
+            <label>Incident Longitude</label>
+            <input type="number" name="accident_lon" id="accident_lon"
+                   value="80.6475" step="0.0001" min="79" max="82" />
+          </div>
+
+          <div class="form-group full">
+            <label>Nearest Traffic Monitoring Junction (1–4)</label>
+            <select name="junction" id="junction">
+              {% for j in options['Junction'] %}
+              <option value="{{ j }}" {% if j == 3 %}selected{% endif %}>Junction {{ j }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" class="btn-submit" id="submitBtn">
+            Execute Emergency Routing Pipeline
+          </button>
+
+        </div>
+      </form>
+    </div>
+
+    <footer>
+      Smart Ambulance Routing & Traffic Optimization System · Vijayawada, AP
+    </footer>
+  </main>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // ── Theme Switcher ────────────────────────────────────────────────────────
+    function initTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      updateThemeButton(savedTheme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeButton(next);
+    }
+
+    function updateThemeButton(theme) {
+      const btn = document.getElementById('themeBtn');
+      if (theme === 'dark') {
+        btn.innerHTML = '☀️ Light Mode';
+      } else {
+        btn.innerHTML = '🌙 Dark Mode';
+      }
+    }
+
+    initTheme();
+
+    function showLoading() {
+      document.getElementById('loading').classList.add('show');
+      document.getElementById('submitBtn').disabled = true;
+    }
+
+    // ── Interactive Leaflet Map Picker Setup ──────────────────────────────────
+    let map, marker;
+    const defaultLat = 16.5022;
+    const defaultLon = 80.6475;
+
+    function initPickerMap() {
+      map = L.map('pickerMap').setView([defaultLat, defaultLon], 14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+
+      marker = L.marker([defaultLat, defaultLon], { draggable: true }).addTo(map);
+      marker.bindPopup("Incident Location Pin").openPopup();
+
+      marker.on('dragend', function (e) {
+        const coord = e.target.getLatLng();
+        setCoords(coord.lat, coord.lng);
+      });
+
+      map.on('click', function (e) {
+        setCoords(e.latlng.lat, e.latlng.lng);
+      });
+    }
+
+    function setCoords(lat, lon) {
+      lat = parseFloat(lat).toFixed(4);
+      lon = parseFloat(lon).toFixed(4);
+      document.getElementById('accident_lat').value = lat;
+      document.getElementById('accident_lon').value = lon;
+      if (marker) {
+        marker.setLatLng([lat, lon]);
+        map.panTo([lat, lon]);
+      }
+    }
+
+    function updateCoordinatesFromLandmark(selectEl) {
+      if (!selectEl.value) return;
+      const parts = selectEl.value.split(',');
+      if (parts.length === 2) {
+        setCoords(parts[0], parts[1]);
+      }
+    }
+
+    function smartGPSLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setCoords(pos.coords.latitude, pos.coords.longitude);
+          },
+          (err) => {
+            fetch('https://ipapi.co/json/')
+              .then(res => res.json())
+              .then(data => {
+                if (data.latitude && data.longitude) {
+                  setCoords(data.latitude, data.longitude);
+                } else {
+                  setCoords(defaultLat, defaultLon);
+                }
+              })
+              .catch(() => { setCoords(defaultLat, defaultLon); });
+          },
+          { timeout: 5000 }
+        );
+      } else {
+        setCoords(defaultLat, defaultLon);
+      }
+    }
+
+    function toggleHospitalDropdown(selectEl) {
+      const manualGroup = document.getElementById('manualHospGroup');
+      if (selectEl.value === 'manual') {
+        manualGroup.style.display = 'flex';
+      } else {
+        manualGroup.style.display = 'none';
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', initPickerMap);
+  </script>
+</body>
+</html>

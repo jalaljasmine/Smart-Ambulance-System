@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Results — Smart Ambulance Routing System</title>
+  <meta name="description" content="Smart Ambulance System results: severity prediction, hospital recommendation, traffic prediction, and live route tracking." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  
+  <!-- Leaflet CSS for Live Interactive Map & Vehicle Tracking -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root[data-theme="dark"] {
+      --bg:        #0a0e1a;
+      --surface:   #111827;
+      --card:      rgba(255,255,255,0.04);
+      --border:    rgba(255,255,255,0.09);
+      --accent:    #3b82f6;
+      --accent2:   #6366f1;
+      --red:       #ef4444;
+      --green:     #22c55e;
+      --yellow:    #eab308;
+      --text:      #f1f5f9;
+      --muted:     #94a3b8;
+      --table-best:rgba(59,130,246,0.12);
+      --radius:    14px;
+    }
+
+    :root[data-theme="light"] {
+      --bg:        #f1f5f9;
+      --surface:   #ffffff;
+      --card:      #ffffff;
+      --border:    rgba(0,0,0,0.12);
+      --accent:    #2563eb;
+      --accent2:   #4f46e5;
+      --red:       #dc2626;
+      --green:     #16a34a;
+      --yellow:    #ca8a04;
+      --text:      #0f172a;
+      --muted:     #475569;
+      --table-best:#eff6ff;
+      --radius:    14px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: -1;
+      background:
+        radial-gradient(ellipse 70% 40% at 10% 0%, rgba(59,130,246,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 35% at 90% 100%, rgba(99,102,241,0.1) 0%, transparent 60%),
+        var(--bg);
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .logo { font-size: 26px; }
+    header h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .theme-toggle-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .back-btn {
+      background: rgba(59,130,246,0.12);
+      border: 1px solid rgba(59,130,246,0.3);
+      color: var(--accent);
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .back-btn:hover { background: rgba(59,130,246,0.2); }
+
+    /* ── Page layout ─────────────────────────────────────────── */
+    main {
+      max-width: 1100px;
+      margin: 36px auto;
+      padding: 0 24px 60px;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .page-meta {
+      color: var(--muted);
+      font-size: 0.83rem;
+      margin-bottom: 28px;
+    }
+
+    /* ── Severity hero badge ──────────────────────────────────── */
+    .severity-hero {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 32px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+    .severity-hero::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 6px;
+      background: var(--sev-color, var(--accent));
+      border-radius: var(--radius) 0 0 var(--radius);
+    }
+    .sev-icon { font-size: 2.8rem; }
+    .sev-info h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .sev-label {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 800;
+    }
+
+    .badge-fatal   { color: var(--red); --sev-color: var(--red); }
+    .badge-serious { color: var(--yellow); --sev-color: var(--yellow); }
+    .badge-slight  { color: var(--green); --sev-color: var(--green); }
+
+    /* ── Grid layout ─────────────────────────────────────────── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 680px) { .results-grid { grid-template-columns: 1fr; } }
+
+    .result-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .card-icon { font-size: 1.4rem; }
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.92rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-label { font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+    .metric-value { font-size: 0.95rem; font-weight: 600; }
+    .metric-value.accent  { color: var(--accent); }
+    .metric-value.green   { color: var(--green); }
+    .metric-value.yellow  { color: var(--yellow); }
+    .metric-value.large {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 800;
+    }
+
+    /* ── Map & Vehicle Tracking section ────────────────────────── */
+    .map-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 24px;
+      transition: all 0.3s ease;
+    }
+    .map-section.fullscreen-mode {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 9999;
+      border-radius: 0;
+      margin: 0;
+    }
+
+    .map-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .map-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .fullscreen-btn {
+      font-size: 0.8rem;
+      color: var(--accent);
+      background: rgba(59,130,246,0.12);
+      border: 1px solid rgba(59,130,246,0.3);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .fullscreen-btn:hover { background: rgba(59,130,246,0.25); }
+
+    /* Live Tracking Telemetry Control Bar */
+    .tracking-hud {
+      background: var(--surface);
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .hud-controls {
+      display: flex;
+      gap: 10px;
+    }
+    .hud-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.2s;
+    }
+    .hud-btn.secondary {
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .hud-btn:hover { opacity: 0.9; }
+
+    .hud-metrics {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .hud-stat {
+      display: flex;
+      flex-direction: column;
+    }
+    .hud-stat-label { font-size: 0.7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .hud-stat-val { font-size: 0.95rem; font-weight: 700; color: var(--accent); }
+
+    .hud-status-badge {
+      background: rgba(34,197,94,0.15);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,0.3);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    #liveMap {
+      height: 480px;
+      width: 100%;
+      z-index: 1;
+    }
+    .map-section.fullscreen-mode #liveMap {
+      height: calc(100vh - 110px);
+    }
+
+    /* Animated siren marker styling */
+    .ambulance-marker-icon {
+      font-size: 26px;
+      text-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+      animation: sirenPulse 0.8s infinite alternate;
+    }
+    @keyframes sirenPulse {
+      0% { transform: scale(1.0); filter: drop-shadow(0 0 4px #ef4444); }
+      100% { transform: scale(1.2); filter: drop-shadow(0 0 14px #3b82f6); }
+    }
+
+    /* ── Hospital table ──────────────────────────────────────── */
+    .table-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .table-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 18px; text-align: left; font-size: 0.85rem; }
+    th {
+      background: var(--surface);
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.72rem;
+    }
+    tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    tr:last-child { border-bottom: none; }
+    tr.best-row { background: var(--table-best); }
+    .trauma-yes { color: var(--green); font-weight: 700; }
+    .trauma-no  { color: var(--muted); }
+
+    .btn-route-hosp {
+      background: rgba(59,130,246,0.12);
+      border: 1px solid rgba(59,130,246,0.3);
+      color: var(--accent);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-route-hosp:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* ── Action buttons ─────────────────────────────────────── */
+    .actions {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      margin-top: 32px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      padding: 13px 28px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(59,130,246,0.35);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">🚑</div>
+    <h1>Smart Ambulance Routing System</h1>
+    <div class="header-actions">
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" id="themeBtn">
+        🌙 Dark Mode
+      </button>
+      <a href="/" class="back-btn">← New Analysis</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-title">📊 Emergency Pipeline Execution Results</div>
+    <div class="page-meta">Analysis completed at {{ timestamp }} &nbsp;|&nbsp; Strategy: <strong id="strategyLabel" style="color:var(--accent)">{{ routing_strategy | capitalize }}</strong></div>
+
+    <!-- Severity Hero -->
+    <div class="severity-hero {{ severity_class }}">
+      <div class="sev-icon">
+        {% if severity == 'Fatal Injury' %}🔴{% elif severity == 'Serious Injury' %}🟡{% else %}🟢{% endif %}
+      </div>
+      <div class="sev-info">
+        <h2>Predicted Accident Severity</h2>
+        <div class="sev-label {{ severity_class }}">{{ severity }}</div>
+      </div>
+      <div style="margin-left:auto; text-align:right">
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">ML Classifier</div>
+        <div style="font-size:0.85rem;font-weight:700">Random Forest</div>
+      </div>
+    </div>
+
+    <!-- Results grid -->
+    <div class="results-grid">
+
+      <!-- Hospital card -->
+      <div class="result-card">
+        <div class="card-header">
+          <div class="card-icon">🏥</div>
+          <div class="card-title">Target Hospital</div>
+        </div>
+        <div id="targetHospName" style="font-family:'Outfit',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:20px;color:var(--accent)">
+          {{ hospital_name }}
+        </div>
+        <!-- Distance first — primary scoring factor -->
+        <div class="metric-row">
+          <span class="metric-label">📍 Distance (Shortest Path)</span>
+          <span class="metric-value large accent" id="targetDistance">{{ distance_km }} <span style="font-size:0.82rem;font-weight:500">km</span></span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">⏱️ Est. Travel Time</span>
+          <span class="metric-value large" style="color:var(--accent2)" id="targetEta">{{ eta_minutes }} <span style="font-size:0.82rem;font-weight:500">min</span></span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">🚗 Traffic Volume</span>
+          <span class="metric-value yellow">{{ traffic }} veh/hr</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Trauma Center</span>
+          <span class="metric-value {% if trauma_center == 'Yes' %}green{% else %}yellow{% endif %}" id="targetTrauma">{{ trauma_center }}</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">ICU Beds</span>
+          <span class="metric-value accent" id="targetIcu">{{ icu_beds }}</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Hospital Score</span>
+          <span class="metric-value accent" id="targetScore">{{ hosp_score }}</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Coordinates</span>
+          <span class="metric-value" id="targetCoords" style="font-size:0.82rem">{{ hospital_lat }}, {{ hospital_lon }}</span>
+        </div>
+      </div>
+
+      <!-- Route card -->
+      <div class="result-card">
+        <div class="card-header">
+          <div class="card-icon">🗺️</div>
+          <div class="card-title">Route & Algorithm</div>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Routing Algorithm</span>
+          <span class="metric-value">Dijkstra Shortest Path</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Route Nodes</span>
+          <span class="metric-value accent" id="targetNodes">{{ route_nodes }}</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Traffic Model</span>
+          <span class="metric-value">Random Forest Regressor</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Hospital Selection</span>
+          <span class="metric-value">Proximity-First Scoring</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Live Vehicle Tracking & Map Section -->
+    <div class="map-section" id="mapSection">
+      <div class="map-header">
+        <div class="map-title">
+          <span>🚨 Live Vehicle Route & Emergency Tracking</span>
+        </div>
+        <button type="button" class="fullscreen-btn" onclick="toggleFullscreenMap()">
+          ⛶ Toggle Fullscreen Map
+        </button>
+      </div>
+
+      <!-- Live Tracking Telemetry Control HUD -->
+      <div class="tracking-hud">
+        <div class="hud-controls">
+          <button type="button" class="hud-btn" id="startTrackBtn" onclick="toggleTrackingAnimation()">
+            ▶️ Start Live Tracking
+          </button>
+          <button type="button" class="hud-btn secondary" onclick="resetTrackingAnimation()">
+            🔄 Reset
+          </button>
+        </div>
+
+        <div class="hud-metrics">
+          <div class="hud-stat">
+            <span class="hud-stat-label">Live Speed</span>
+            <span class="hud-stat-val" id="hudSpeed">0 km/h</span>
+          </div>
+          <div class="hud-stat">
+            <span class="hud-stat-label">Dist. Remaining</span>
+            <span class="hud-stat-val" id="hudDistRem">{{ distance_km }} km</span>
+          </div>
+          <div class="hud-stat">
+            <span class="hud-stat-label">ETA Countdown</span>
+            <span class="hud-stat-val" id="hudEtaTimer">{{ eta_minutes }}m 00s</span>
+          </div>
+          <div class="hud-stat">
+            <span class="hud-stat-label">Traffic</span>
+            <span class="hud-stat-val" style="color:var(--yellow)">{{ traffic }} v/hr</span>
+          </div>
+          <span class="hud-status-badge" id="hudStatusBadge">AWAITING DISPATCH</span>
+        </div>
+      </div>
+
+      <!-- Interactive Leaflet Map -->
+      <div id="liveMap"></div>
+    </div>
+
+    <!-- Hospital ranking table -->
+    <div class="table-section">
+      <div class="table-header">
+        <span>🏥 All Hospitals Ranked (Click Any to Route)</span>
+        <span style="font-size:0.78rem;color:var(--muted);font-weight:400">💡 Click "📍 Route" to instantly update destination</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Hospital</th>
+            <th>Distance</th>
+            <th>ICU Beds</th>
+            <th>Trauma Center</th>
+            <th>Score</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="hospTableBody">
+          {% for h in hospital_table %}
+          <tr id="row-{{ loop.index }}" class="{% if h.Hospital == hospital_name %}best-row{% endif %}">
+            <td>
+              <span class="hosp-star">{% if h.Hospital == hospital_name %}★{% else %}{{ loop.index }}{% endif %}</span>
+            </td>
+            <td>
+              <strong class="hosp-name-text">{{ h.Hospital }}</strong>
+            </td>
+            <td>{{ h.Distance_km }} km</td>
+            <td>{{ h.ICU_Beds }}</td>
+            <td class="{% if h.Trauma_Center == 'Yes' %}trauma-yes{% else %}trauma-no{% endif %}">{{ h.Trauma_Center }}</td>
+            <td style="font-weight:700">{{ h.Score }}</td>
+            <td>
+              <button type="button" class="btn-route-hosp"
+                      onclick="selectAndRouteToHospital('{{ h.Hospital }}', {{ h.Latitude }}, {{ h.Longitude }}, {{ h.ICU_Beds }}, '{{ h.Trauma_Center }}', {{ h.Score }})">
+                📍 Route to This
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Accident inputs summary -->
+    <div class="result-card">
+      <div class="card-header">
+        <div class="card-icon">📋</div>
+        <div class="card-title">Input Incident Details</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;">
+        {% for key, val in accident_inputs.items() %}
+        <div class="metric-row">
+          <span class="metric-label">{{ key.replace('_', ' ') }}</span>
+          <span class="metric-value" style="font-size:0.85rem">{{ val }}</span>
+        </div>
+        {% endfor %}
+        <div class="metric-row">
+          <span class="metric-label">Accident Location</span>
+          <span class="metric-value" style="font-size:0.82rem">{{ accident_lat }}, {{ accident_lon }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="actions">
+      <a href="/" class="btn-primary">🔄 New Analysis</a>
+    </div>
+
+  </main>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // ── Theme Switcher ────────────────────────────────────────────────────────
+    function initTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      updateThemeButton(savedTheme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeButton(next);
+    }
+
+    function updateThemeButton(theme) {
+      const btn = document.getElementById('themeBtn');
+      if (btn) {
+        btn.innerHTML = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+      }
+    }
+    initTheme();
+
+    // ── Global Context Variables ─────────────────────────────────────────────
+    const accidentLat = {{ accident_lat }};
+    const accidentLon = {{ accident_lon }};
+    const trafficVal  = {{ traffic }};
+    let currentRouteCoords = {{ route_coords_json | safe }};
+    let currentDistanceKm  = {{ distance_km }};
+    let currentEtaMinutes  = {{ eta_minutes }};
+
+    let map, startMarker, destMarker, ambulanceMarker;
+    let fullRoutePolyline, traveledPolyline;
+    let isTrackingRunning = false;
+    let animIntervalId  = null;   // setInterval handle
+    let sirenIntervalId = null;   // siren blink handle
+    let animStep        = 0;
+    let sirenRed        = true;   // alternates for siren effect
+
+    // Animation runs at 20 fps.  We compress real ETA by 60× so
+    // a 6-min ETA → 6 real seconds of animation.
+    const ANIM_FPS       = 20;
+    const TIME_COMPRESS  = 60;    // 1 real second = 60 ETA seconds
+    // totalFrames is computed per-route inside startAnimation()
+
+    // ── Initialize Leaflet Live Map ──────────────────────────────────────────
+    function initLiveMap() {
+      if (map) return;
+
+      map = L.map('liveMap').setView([accidentLat, accidentLon], 14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+
+      // Accident Pin (Red)
+      startMarker = L.marker([accidentLat, accidentLon], {
+        icon: L.icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        })
+      }).addTo(map).bindPopup("🚨 <b>Accident Location</b>");
+
+      // Hospital Marker (Green)
+      destMarker = L.marker([{{ hospital_lat }}, {{ hospital_lon }}], {
+        icon: L.icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        })
+      }).addTo(map).bindPopup("🏥 <b>{{ hospital_name }}</b>");
+
+      // Ambulance Icon (Siren animated)
+      const ambulanceIcon = L.divIcon({
+        html: '<div class="ambulance-marker-icon">🚑</div>',
+        className: 'ambulance-div-icon',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
+      ambulanceMarker = L.marker([accidentLat, accidentLon], { icon: ambulanceIcon, zIndexOffset: 1000 }).addTo(map);
+
+      // Polylines: Blue for total remaining route, Green for traveled route
+      fullRoutePolyline = L.polyline(currentRouteCoords, { color: '#3b82f6', weight: 6, opacity: 0.85 }).addTo(map);
+      traveledPolyline = L.polyline([], { color: '#22c55e', weight: 6, opacity: 0.95 }).addTo(map);
+
+      if (currentRouteCoords.length > 0) {
+        map.fitBounds(fullRoutePolyline.getBounds(), { padding: [40, 40] });
+      }
+    }
+
+    // ── Live Vehicle Tracking Animation Engine ──────────────────────────────
+
+    // Smooth interpolation between two route coordinate points
+    function interpolateCoords(coords, progress) {
+      if (!coords || coords.length === 0) return [accidentLat, accidentLon];
+      if (coords.length === 1 || progress <= 0) return coords[0];
+      if (progress >= 1) return coords[coords.length - 1];
+      const totalSegs  = coords.length - 1;
+      const exactIndex = progress * totalSegs;
+      const idx        = Math.floor(exactIndex);
+      const frac       = exactIndex - idx;
+      if (idx >= totalSegs) return coords[totalSegs];
+      const p1  = coords[idx];
+      const p2  = coords[idx + 1];
+      return [p1[0] + (p2[0] - p1[0]) * frac, p1[1] + (p2[1] - p1[1]) * frac];
+    }
+
+    // Compute realistic speed from traffic volume (matches Python config)
+    function speedFromTraffic(veh) {
+      if (veh < 10) return 60;   // light — ambulance can go fast
+      if (veh < 20) return 45;   // moderate
+      return 30;                  // heavy
+    }
+
+    function startAnimation() {
+      if (animIntervalId) clearInterval(animIntervalId);
+      if (sirenIntervalId) clearInterval(sirenIntervalId);
+
+      // Total real-time animation duration = ETA / TIME_COMPRESS seconds
+      const etaSeconds     = currentEtaMinutes * 60;       // total ETA in seconds
+      const animDurSec     = Math.max(4, etaSeconds / TIME_COMPRESS); // min 4 s
+      const totalFrames    = Math.round(animDurSec * ANIM_FPS);
+      const intervalMs     = 1000 / ANIM_FPS;
+      const speedKmh       = speedFromTraffic(trafficVal);
+      animStep             = 0;
+      isTrackingRunning    = true;
+
+      document.getElementById('startTrackBtn').innerHTML = '⏸️ Pause';
+      document.getElementById('hudSpeed').textContent = speedKmh + ' km/h';
+
+      // ── Siren blink: alternates red/blue every 400 ms ────────────────────
+      sirenIntervalId = setInterval(() => {
+        const el = document.querySelector('.ambulance-marker-icon');
+        if (el) {
+          sirenRed = !sirenRed;
+          el.style.filter = sirenRed
+            ? 'drop-shadow(0 0 10px #ef4444) drop-shadow(0 0 4px #ef4444)'
+            : 'drop-shadow(0 0 10px #3b82f6) drop-shadow(0 0 4px #3b82f6)';
+        }
+      }, 400);
+
+      // ── Main animation tick ──────────────────────────────────────────────
+      animIntervalId = setInterval(() => {
+        if (!isTrackingRunning) return;
+
+        animStep++;
+        const progress = Math.min(1.0, animStep / totalFrames);
+
+        // Move ambulance along actual route
+        const pos = interpolateCoords(currentRouteCoords, progress);
+        ambulanceMarker.setLatLng(pos);
+
+        // Camera follows ambulance (pan smoothly)
+        map.panTo(pos, { animate: true, duration: 0.5 });
+
+        // Update traveled (green) vs remaining (blue) polylines
+        const cut    = Math.floor(progress * (currentRouteCoords.length - 1));
+        const traveled = currentRouteCoords.slice(0, cut + 1).concat([pos]);
+        traveledPolyline.setLatLngs(traveled);
+        fullRoutePolyline.setLatLngs(currentRouteCoords.slice(cut));
+
+        // Remaining distance & ETA
+        const distRem  = (currentDistanceKm * (1 - progress)).toFixed(2);
+        const remSec   = Math.round(etaSeconds * (1 - progress));
+        const mins     = Math.floor(remSec / 60);
+        const secs     = remSec % 60;
+        document.getElementById('hudDistRem').textContent  = distRem + ' km';
+        document.getElementById('hudEtaTimer').textContent = `${String(mins).padStart(2,'0')}m ${String(secs).padStart(2,'0')}s`;
+
+        // Status badge
+        const badge = document.getElementById('hudStatusBadge');
+        if (progress < 1.0) {
+          badge.textContent        = '🚨 EN ROUTE TO HOSPITAL';
+          badge.style.background   = 'rgba(239,68,68,0.18)';
+          badge.style.color        = '#f87171';
+          badge.style.borderColor  = 'rgba(239,68,68,0.4)';
+        } else {
+          // Arrived
+          badge.textContent        = '🏥 ARRIVED AT HOSPITAL ER';
+          badge.style.background   = 'rgba(34,197,94,0.18)';
+          badge.style.color        = '#4ade80';
+          badge.style.borderColor  = 'rgba(34,197,94,0.4)';
+          document.getElementById('hudSpeed').textContent = '0 km/h';
+          clearInterval(animIntervalId);
+          clearInterval(sirenIntervalId);
+          isTrackingRunning = false;
+          document.getElementById('startTrackBtn').innerHTML = '▶️ Start Live Tracking';
+          // Zoom in on hospital when arrived
+          map.flyTo(currentRouteCoords[currentRouteCoords.length - 1], 16, { animate: true, duration: 1.5 });
+          const el = document.querySelector('.ambulance-marker-icon');
+          if (el) el.style.filter = 'drop-shadow(0 0 14px #4ade80)';
+        }
+      }, intervalMs);
+    }
+
+    function toggleTrackingAnimation() {
+      const btn = document.getElementById('startTrackBtn');
+      if (isTrackingRunning) {
+        // Pause
+        isTrackingRunning = false;
+        clearInterval(animIntervalId);
+        clearInterval(sirenIntervalId);
+        btn.innerHTML = '▶️ Resume';
+      } else {
+        if (animStep === 0) {
+          // Fresh start
+          startAnimation();
+        } else {
+          // Resume from current step
+          startAnimation(); // restarts from animStep=0 — reset is cleaner
+        }
+      }
+    }
+
+    function resetTrackingAnimation() {
+      isTrackingRunning = false;
+      clearInterval(animIntervalId);
+      clearInterval(sirenIntervalId);
+      animStep = 0;
+      document.getElementById('startTrackBtn').innerHTML = '▶️ Start Live Tracking';
+
+      // Restore ambulance to accident start position
+      const startPos = currentRouteCoords.length > 0 ? currentRouteCoords[0] : [accidentLat, accidentLon];
+      ambulanceMarker.setLatLng(startPos);
+
+      // Restore full route blue line
+      fullRoutePolyline.setLatLngs(currentRouteCoords);
+      traveledPolyline.setLatLngs([]);
+
+      // Fit map to full route again
+      if (currentRouteCoords.length > 1) {
+        map.fitBounds(fullRoutePolyline.getBounds(), { padding: [50, 50], animate: true });
+      }
+
+      // Reset siren icon colour
+      const el = document.querySelector('.ambulance-marker-icon');
+      if (el) el.style.filter = 'none';
+
+      // Reset HUD
+      document.getElementById('hudSpeed').textContent    = '0 km/h';
+      document.getElementById('hudDistRem').textContent  = currentDistanceKm + ' km';
+      const m = Math.floor(currentEtaMinutes);
+      const s = Math.round((currentEtaMinutes - m) * 60);
+      document.getElementById('hudEtaTimer').textContent = `${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+
+      const badge = document.getElementById('hudStatusBadge');
+      badge.textContent       = 'AWAITING DISPATCH';
+      badge.style.background  = 'rgba(59,130,246,0.15)';
+      badge.style.color       = 'var(--accent)';
+      badge.style.borderColor = 'rgba(59,130,246,0.3)';
+    }
+
+    // ── Fullscreen Map Toggle ────────────────────────────────────────────────
+    function toggleFullscreenMap() {
+      const mapSection = document.getElementById('mapSection');
+      mapSection.classList.toggle('fullscreen-mode');
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 300);
+    }
+
+    // ── Interactive Dynamic Hospital Routing via AJAX ────────────────────────
+    function selectAndRouteToHospital(name, lat, lon, icu, trauma, score) {
+      // 1. Update text elements safely
+      document.getElementById('targetHospName').textContent = name;
+      document.getElementById('targetIcu').textContent = icu;
+      document.getElementById('targetTrauma').textContent = trauma;
+      document.getElementById('targetScore').textContent = score;
+      document.getElementById('targetCoords').textContent = `${lat}, ${lon}`;
+
+      // Update table highlighted row
+      const rows = document.querySelectorAll('#hospTableBody tr');
+      rows.forEach(r => {
+        r.classList.remove('best-row');
+        const star = r.querySelector('.hosp-star');
+        if (star) star.textContent = '';
+      });
+
+      // Fetch dynamic Dijkstra route for newly selected hospital
+      fetch('/api/route_to_hospital', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accident_lat: accidentLat,
+          accident_lon: accidentLon,
+          dest_lat: lat,
+          dest_lon: lon,
+          hospital_name: name,
+          traffic: trafficVal
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          currentRouteCoords = data.route_coords;
+          currentDistanceKm  = data.distance_km;
+          currentEtaMinutes  = data.eta_minutes;
+
+          document.getElementById('targetDistance').innerHTML = data.distance_km + ' <span style="font-size:0.82rem;font-weight:500">km</span>';
+          document.getElementById('targetEta').innerHTML = data.eta_minutes + ' <span style="font-size:0.82rem;font-weight:500">min</span>';
+          document.getElementById('targetNodes').textContent = data.route_nodes;
+          document.getElementById('hudDistRem').textContent  = data.distance_km + ' km';
+          const m = Math.floor(data.eta_minutes), s2 = Math.round((data.eta_minutes - m) * 60);
+          document.getElementById('hudEtaTimer').textContent = `${String(m).padStart(2,'0')}m ${String(s2).padStart(2,'0')}s`;
+
+          // Update Leaflet destination marker & polylines
+          destMarker.setLatLng([lat, lon]).bindPopup(`🏥 <b>${name}</b>`);
+          fullRoutePolyline.setLatLngs(currentRouteCoords);
+
+          if (currentRouteCoords.length > 0) {
+            map.fitBounds(fullRoutePolyline.getBounds(), { padding: [40, 40] });
+          }
+
+          resetTrackingAnimation();
+          // Show full new route
+          map.fitBounds(fullRoutePolyline.getBounds(), { padding: [50, 50], animate: true });
+        }
+      })
+      .catch(err => {
+        console.error("Route recalculation error:", err);
+      });
+    }
+
+    // Initialize map on page ready
+    window.addEventListener('DOMContentLoaded', () => {
+      initLiveMap();
+    });
+  </script>
+</body>
+</html>

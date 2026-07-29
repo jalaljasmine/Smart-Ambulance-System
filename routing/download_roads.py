@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import osmnx as ox
 
 place = "Vijayawada, Andhra Pradesh, India"

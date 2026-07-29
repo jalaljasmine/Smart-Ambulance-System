@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 import joblib
 
 model = joblib.load("models/traffic_model.pkl")
