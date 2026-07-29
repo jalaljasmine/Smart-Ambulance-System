@@ -220,17 +220,7 @@ python main.py
   Route Nodes         : 34
 ==================================================
 [OK] Pipeline completed successfully.
-```
 
----
-
-## 📸 Dashboard Screenshots
-
-*(Add screenshots here for your GitHub portfolio)*
-- **Input Form**: Dark glassmorphic interface with interactive dropdowns.
-- **Results View**: Metric cards, severity badge, ranked hospital list, and Folium map.
-
----
 
 ## 🔮 Future Scope
 
