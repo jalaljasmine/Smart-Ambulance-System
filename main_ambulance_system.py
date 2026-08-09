@@ -174,10 +174,6 @@ weekday_val = ts.weekday()
 
 all_nodes_list = list(G.nodes())
 
-# =========================================================================
-# 📍 TEST LOCATION CONFIGURATION 
-# Toggle between "571470125" (East Side) and "660700040" (West Side)
-# =========================================================================
 ambulance_start = "660700040" if "660700040" in all_nodes_list else all_nodes_list
 
 # Generate routing costs layer
